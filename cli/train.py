@@ -40,7 +40,7 @@ import wandb
 import transformers
 
 # Imports from our module
-from transformer_mt.modeling_transformer import TransfomerEncoderDecoderModel
+from transformer_mt.modeling_transformer import TransfomerEncoderDecoderModel, BartTokenizer, BartForConditionalGeneration
 from transformer_mt import utils
 
 
@@ -86,7 +86,7 @@ def parse_args():
         required=True,
         help=("Where to store the final model. "
               "Should contain the source and target tokenizers in the following format: "
-              r"output_dir/{source_lang}_tokenizer and output_dir/{target_lang}_tokenizer. "
+              "output_dir/{source_lang}_tokenizer and output_dir/{target_lang}_tokenizer. "
               "Both of these should be directories containing tokenizer.json files."
         ),
     )
@@ -272,30 +272,8 @@ def parse_args():
 
 
 def preprocess_function(
-    examples,
-    source_lang,
-    target_lang,
-    max_seq_length,
-    source_tokenizer,
-    target_tokenizer,
+    examples
 ):
-    """Tokenize, truncate and add special tokens to the examples. Shift the target text by one token.
-    
-    Args:
-        examples: A dictionary with a single key "translation",
-            which is a list of dictionaries with keys meaning language codes.
-
-            For example:
-            {"translation": [
-                {"en": "Hello", "fr": "Bonjour"},
-                {"en": "How are you?", "fr": "Comment allez-vous?"},
-            ]}
-        source_lang: The language code of the source language.
-        target_lang: The language code of the target language.
-        max_seq_length: The maximum total sequence length (in tokens) for source and target texts.
-        source_tokenizer: The tokenizer to use for the source language.
-        target_tokenizer: The tokenizer to use for the target language.
-    """
     inputs = [ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
 
@@ -417,7 +395,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     # Load the datasets
-    raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name)
+    raw_datasets = load_dataset('cnn_dailymail', '3.0.0')
     if "validation" not in raw_datasets:
         # will create "train" and "test" subsets
         # fix seed to make sure that the split is reproducible
@@ -431,16 +409,7 @@ def main():
     # Part 2: Create the model and load the tokenizers
     ###############################################################################
 
-    src_tokenizer_path = os.path.join(args.output_dir, f"{args.source_lang}_tokenizer")
-    tgt_tokenizer_path = os.path.join(args.output_dir, f"{args.target_lang}_tokenizer")
-    # Task 4.1: Load source and target tokenizers from the variables above
-    # using transformers.PreTrainedTokenizerFast.from_pretrained
-    # https://huggingface.co/docs/transformers/v4.16.2/en/main_classes/tokenizer#transformers.PreTrainedTokenizerFast
-    # Our implementation is two lines.
-    # YOUR CODE STARTS HERE
-    source_tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(src_tokenizer_path)
-    target_tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(tgt_tokenizer_path)
-    # YOUR CODE ENDS HERE
+    tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
 
     # Task 4.2: Create TransformerEncoderDecoder object
     # Provide all of the TransformerLM initialization arguments from args.
@@ -452,8 +421,7 @@ def main():
         num_heads=args.num_heads,
         fcn_hidden=args.fcn_hidden,
         max_seq_len=args.max_seq_length,
-        src_vocab_size=source_tokenizer.vocab_size,
-        tgt_vocab_size=target_tokenizer.vocab_size,
+        src_vocab_size=tokenizer.vocab_size,
         dropout=args.dropout_rate,
     )
     model.to(args.device)
@@ -473,17 +441,15 @@ def main():
     # Because .map expects the pre-processing function only to have one argument,
     # we need to wrap preprocess_function() in a partial and provide the rest of the arguments.
     # It is better to do this instead of defining a function right here (as we did in the previous homework)
-    preprocess_function_wrapped = partial(
-        preprocess_function,
-        source_lang=args.source_lang,
-        target_lang=args.target_lang,
-        max_seq_length=args.max_seq_length,
-        source_tokenizer=source_tokenizer,
-        target_tokenizer=target_tokenizer,
-    )
+    #preprocess_function_wrapped = partial(
+    #    preprocess_function,
+    #    source_lang=args.source_lang,
+    #    max_seq_length=args.max_seq_length,
+    #    source_tokenizer=tokenizer,
+    #)
 
     processed_datasets = raw_datasets.map(
-        preprocess_function_wrapped,
+        preprocess_function,
         batched=True,
         num_proc=args.preprocessing_num_workers,
         remove_columns=column_names,
@@ -505,11 +471,11 @@ def main():
     # Part 4: Create PyTorch dataloaders that handle data shuffling and batching
     ###############################################################################
 
-    collation_function_for_seq2seq_wrapped = partial(
-        collation_function_for_seq2seq,
-        source_pad_token_id=source_tokenizer.pad_token_id,
-        target_pad_token_id=target_tokenizer.pad_token_id,
-    )
+    #collation_function_for_seq2seq_wrapped = partial(
+    #    collation_function_for_seq2seq,
+    #    source_pad_token_id=source_tokenizer.pad_token_id,
+    #    target_pad_token_id=target_tokenizer.pad_token_id,
+    #)
 
     # Task 4.3: Create a PyTorch DataLoader for the training set
     # 1. Provide your train_dataset to it.
@@ -520,11 +486,15 @@ def main():
     # Our implementation is two lines, but if you write it in 10-12 lines it would be more readable.
     # (readability matters)
     # YOUR CODE STARTS HERE
+    from transformers.data.data_collator import DataCollatorWithPadding
+
+    collator = transformers.data.data_collator.DataCollatorWithPadding(tokenizer)
+
     train_dataloader = DataLoader(
-        train_dataset, shuffle=True, collate_fn=collation_function_for_seq2seq_wrapped, batch_size=args.batch_size, num_workers=args.preprocessing_num_workers,
+        train_dataset, shuffle=True, collate_fn=collator, batch_size=args.batch_size, num_workers=args.preprocessing_num_workers,
     )
     eval_dataloader = DataLoader(
-        eval_dataset, collate_fn=collation_function_for_seq2seq_wrapped, batch_size=args.batch_size
+        eval_dataset, collate_fn=collator, batch_size=args.batch_size
     )
     # YOUR CODE ENDS HERE
 

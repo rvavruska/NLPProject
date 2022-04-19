@@ -49,62 +49,27 @@ datasets.utils.logging.set_verbosity_warning()
 transformers.utils.logging.set_verbosity_info()
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train a tokenizer")
-
-    parser.add_argument(
-        "--dataset_name",
-        type=str,
-        default="stas/wmt14-en-de-pre-processed",
-        help="The name of the dataset to use (via the datasets library).",
-    )
-    parser.add_argument(
-        "--dataset_config_name",
-        type=str,
-        default="en-de",
-        help=("Many datasets in Huggingface Dataset repository have multiple versions or configs. "
-              "For the case of machine translation these usually indicate the language pair like "
-              "en-es or zh-fr or similar. To look up possible configs of a dataset, "
-              "find it on huggingface.co/datasets."),
-    )
-    parser.add_argument("--source_lang", type=str, default="en", help="Source language")
-    parser.add_argument("--target_lang", type=str, default="es", help="Target language")
-    parser.add_argument("--vocab_size", type=int, required=True, help="Size of the vocabulary")
-    parser.add_argument("--save_dir", type=str, required=True, help="Directory which will be used to save tokenizer.")
-
-    args = parser.parse_args()
-
-    return args
-
 
 def main():
-    args = parse_args()
-    logger.info(f"Starting tokenizer training with args {args}")
-
     # See more about loading any type of standard or custom dataset (from files, python dict, pandas DataFrame, etc) at
     # https://huggingface.co/docs/datasets/loading_datasets.html.
     logger.info(f"Loading dataset")
-    raw_datasets = load_dataset(args.dataset_name, args.dataset_config_name)
+    raw_datasets = load_dataset('cnn_dailymail', '3.0.0')
     if "validation" not in raw_datasets:
         # will create "train" and "test" subsets
         # fix seed to make sure that the split is reproducible
         # note that we should use the same seed here and in train.py
         raw_datasets = raw_datasets["train"].train_test_split(test_size=2000, seed=42)
 
-    if args.source_lang not in raw_datasets["train"][0]["translation"]:
-        raise ValueError(f"Language {args.source_lang} not found in dataset")
-    
-    if args.target_lang not in raw_datasets["train"][0]["translation"]:
-        raise ValueError(f"Language {args.target_lang} not found in dataset")
-
-    logger.info(f"Building tokenizer for the source language (might take a couple of minutes)")
+    logger.info(f"Building tokenizer for the language")
 
     # Optional Task: If you are using a dataset different from stas/wmt14-en-de-pre-processed
     # depending on the dataset format, you might need to modify the iterator (line 109)
     # YOUR CODE STARTS HERE
     source_tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    source_tokenizer_trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], vocab_size=args.vocab_size)
+    source_tokenizer_trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], vocab_size=32000)
     source_tokenizer.pre_tokenizer = Whitespace()
+    print(raw_datasets["train"])
 
     source_iterator = (item["translation"][args.source_lang] for item in raw_datasets["train"])
     source_tokenizer.train_from_iterator(
@@ -118,48 +83,8 @@ def main():
         eos_token="[EOS]",
         pad_token="[PAD]",
     )
-    logger.info(f"Saving source to {args.save_dir}/{args.source_lang}_tokenizer")
-    source_tokenizer.save_pretrained(os.path.join(args.save_dir, f"{args.source_lang}_tokenizer"))
-    # YOUR CODE ENDS HERE
-
-    logger.info(f"Building tokenizer for the target language (might take a couple of minutes)")
-
-    # Task 3.1: by analogy to the source tokenizer above, make a tokenizer for the target language
-    # 1. Build a target tokenizer,
-    # 2. Train it on args.target_lang
-    # 3. Convert to transformers.PreTrainedTokenizerFast and save to save_dir/target_tokenizer.
-    #
-    # BOS is beginning-of-sequence special token.
-    # EOS is end-of-sequence special token.
-    # PAD is a padding token.
-    #
-    # Above every code line leave a short comment explaining what it does.
-    # YOUR CODE STARTS HERE (our implementation is 8 lines of code)
-    # Initalize tokenizer and label unknown token
-    target_tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    # Create the tokenizer trainer giving the vocab size and special tokens.
-    target_tokenizer_trainer = BpeTrainer(special_tokens=["[UNK]", "[PAD]", "[BOS]", "[EOS]"], vocab_size=args.vocab_size)
-    # Splits the text into smaller objects with whitespace being the delimeter
-    target_tokenizer.pre_tokenizer = Whitespace()
-    # Iterates over the target lang data set.
-    target_iterator = (item["translation"][args.target_lang] for item in raw_datasets["train"])
-    # Tells the tokenizer to train using the iterator we created
-    target_tokenizer.train_from_iterator(
-        target_iterator,
-        trainer=target_tokenizer_trainer,
-    )
-
-    # Initalizes the tokenizer using what we just trained and sets the special tokens
-    target_tokenizer = transformers.PreTrainedTokenizerFast(
-        tokenizer_object=target_tokenizer,
-        bos_token="[BOS]",
-        eos_token="[EOS]",
-        pad_token="[PAD]",
-    )
-    logger.info(f"Saving target to {args.save_dir}/{args.target_lang}_tokenizer")
-    # Saves the tokenizer
-    target_tokenizer.save_pretrained(os.path.join(args.save_dir, f"{args.target_lang}_tokenizer"))
-    
+    logger.info(f"Saving source to ../output_dir/cnn_tokenizer_tokenizer")
+    source_tokenizer.save_pretrained(os.path.join("../output_dir", f"cnn_tokenizer"))
     # YOUR CODE ENDS HERE
 
 
