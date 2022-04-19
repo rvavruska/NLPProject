@@ -463,8 +463,7 @@ def main():
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 2):
         logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
-        logger.info(f"Decoded input_ids: {source_tokenizer.decode(train_dataset[index]['input_ids'])}")
-        logger.info(f"Decoded labels: {target_tokenizer.decode(train_dataset[index]['labels'])}")
+        logger.info(f"Decoded input_ids: {tokenizer.decode(train_dataset[index]['input_ids'])}")
         logger.info("\n")
 
     ###############################################################################
