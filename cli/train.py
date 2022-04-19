@@ -33,6 +33,7 @@ import datasets
 import torch
 import torch.nn.functional as F
 from datasets import load_dataset
+from datasets import load_metric
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
@@ -274,46 +275,10 @@ def parse_args():
 def preprocess_function(
     examples
 ):
-    inputs = [ex[source_lang] for ex in examples["translation"]]
-    targets = [ex[target_lang] for ex in examples["translation"]]
+    inputs = [ex for ex in examples["article"]]
+    targets = [ex for ex in examples["highlights"]]
 
-    model_inputs = tokenizer(inputs, max_length=max_seq_length, truncation=True)
-
-    targets = tokenizer(targets, max_length=max_seq_length - 1, truncation=True)
-    target_ids = targets["input_ids"]
-
-    decoder_input_ids = []
-    labels = []
-    for target in target_ids:
-        decoder_input_ids.append([tokenizer.bos_token_id] + target)
-        labels.append(target + [tokenizer.eos_token_id])
-
-    model_inputs["decoder_input_ids"] = decoder_input_ids
-    model_inputs["labels"] = labels
-
-    return model_inputs
-
-
-def collation_function_for_seq2seq(batch, source_pad_token_id, target_pad_token_id):
-    """
-    Args:
-        batch: a list of dicts of numpy arrays with keys
-            input_ids
-            decoder_input_ids
-            labels
-    """
-    input_ids_list = [ex["input_ids"] for ex in batch]
-    decoder_input_ids_list = [ex["decoder_input_ids"] for ex in batch]
-    labels_list = [ex["labels"] for ex in batch]
-
-    collated_batch = {
-        "input_ids": utils.pad(input_ids_list, source_pad_token_id),
-        "decoder_input_ids": utils.pad(decoder_input_ids_list, target_pad_token_id),
-        "labels": utils.pad(labels_list, target_pad_token_id),
-    }
-
-    collated_batch["encoder_padding_mask"] = collated_batch["input_ids"] == source_pad_token_id
-    return collated_batch
+    return inputs
 
 
 def evaluate_model(
@@ -326,40 +291,9 @@ def evaluate_model(
     generation_type,
     beam_size,
 ):
-    n_generated_tokens = 0
-    model.eval()
-    for batch in tqdm(dataloader, desc="Evaluation"):
-        with torch.inference_mode():
-            input_ids = batch["input_ids"].to(device)
-            labels = batch["labels"].to(device)
-            key_padding_mask = batch["encoder_padding_mask"].to(device)
+    #https://huggingface.co/metrics/bleurt
+    metric = load_metric("bleurt")
 
-            generated_tokens = model.generate(
-                input_ids,
-                bos_token_id=target_tokenizer.bos_token_id,
-                eos_token_id=target_tokenizer.eos_token_id,
-                pad_token_id=target_tokenizer.pad_token_id,
-                key_padding_mask=key_padding_mask,
-                max_length=max_seq_length,
-                kind=generation_type,
-                beam_size=beam_size,
-            )
-            decoded_preds = target_tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            decoded_labels = target_tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-            for pred in decoded_preds:
-                n_generated_tokens += len(target_tokenizer(pred)["input_ids"])
-
-            decoded_preds, decoded_labels = utils.postprocess_text(decoded_preds, decoded_labels)
-
-            bleu.add_batch(predictions=decoded_preds, references=decoded_labels)
-
-    model.train()
-    eval_metric = bleu.compute()
-    evaluation_results = {
-        "bleu": eval_metric["score"],
-        "generation_length": n_generated_tokens / len(dataloader.dataset),
-    }
     return evaluation_results, input_ids, decoded_preds, decoded_labels
 
 
@@ -502,6 +436,7 @@ def main():
     logger.info("Look at the data that we input into the model, check that it looks like what we expect.")
     for index in random.sample(range(len(batch)), 2):
         logger.info(f"Decoded input_ids: {tokenizer.decode(batch['input_ids'][index])}")
+        logger.info(f"Decoded labels: {tokenizer.decode(batch['labels'][index])}")
         logger.info("\n")
 
     ###############################################################################
