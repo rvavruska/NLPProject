@@ -532,8 +532,7 @@ def main():
     batch = next(iter(train_dataloader))
     logger.info("Look at the data that we input into the model, check that it looks like what we expect.")
     for index in random.sample(range(len(batch)), 2):
-        logger.info(f"Decoded input_ids: {source_tokenizer.decode(batch['input_ids'][index])}")
-        logger.info(f"Decoded labels: {target_tokenizer.decode(batch['labels'][index])}")
+        logger.info(f"Decoded input_ids: {tokenizer.decode(batch['input_ids'][index])}")
         logger.info("\n")
 
     ###############################################################################
@@ -561,7 +560,7 @@ def main():
             loss = F.cross_entropy(
                 logits.view(-1, logits.shape[-1]),
                 labels.view(-1),
-                ignore_index=target_tokenizer.pad_token_id,
+                ignore_index=tokenizer.pad_token_id,
             )
 
             loss.backward()
@@ -587,7 +586,7 @@ def main():
                 # Please pay attention to it during training.
                 # If the metric is significantly below 80%, there is a chance of a bug somewhere.
                 predictions = logits.argmax(-1)
-                label_nonpad_mask = labels != target_tokenizer.pad_token_id
+                label_nonpad_mask = labels != tokenizer.pad_token_id
                 num_words_in_batch = label_nonpad_mask.sum().item()
 
                 accuracy = (predictions == labels).masked_select(label_nonpad_mask).sum().item() / num_words_in_batch
@@ -601,7 +600,7 @@ def main():
                 eval_results, last_input_ids, last_decoded_preds, last_decoded_labels = evaluate_model(
                     model=model,
                     dataloader=eval_dataloader,
-                    target_tokenizer=target_tokenizer,
+                    target_tokenizer=tokenizer,
                     device=args.device,
                     max_seq_length=args.max_seq_length,
                     generation_type=args.generation_type,
@@ -617,7 +616,7 @@ def main():
                 )
                 logger.info("Generation example:")
                 random_index = random.randint(0, len(last_input_ids) - 1)
-                logger.info(f"Input sentence: {source_tokenizer.decode(last_input_ids[random_index], skip_special_tokens=True)}")
+                logger.info(f"Input sentence: {tokenizer.decode(last_input_ids[random_index], skip_special_tokens=True)}")
                 logger.info(f"Generated sentence: {last_decoded_preds[random_index]}")
                 logger.info(f"Reference sentence: {last_decoded_labels[random_index][0]}")
 

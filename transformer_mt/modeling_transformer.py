@@ -145,8 +145,7 @@ class TransfomerEncoderDecoderModel(nn.Module):
         num_heads,
         fcn_hidden,
         max_seq_len,
-        src_vocab_size,
-        tgt_vocab_size,
+        vocab_size,
         dropout=0.1,
     ):
         """A minimal implementation of Transformer Encoder Decoder Model
@@ -161,8 +160,7 @@ class TransfomerEncoderDecoderModel(nn.Module):
             tgt_vocab_size : target voab size
         """
         super().__init__()
-        self.src_vocab_size = src_vocab_size
-        self.tgt_vocab_size = tgt_vocab_size
+        self.src_vocab_size = vocab_size
         self.num_layers = num_layers
         self.hidden = hidden
         self.num_heads = num_heads
@@ -178,11 +176,11 @@ class TransfomerEncoderDecoderModel(nn.Module):
         # 3. Create a dropout layer
         # YOUR CODE STARTS HERE (our implementation is about 5 lines)
 
-        self.encoder_embeddings = nn.Embedding(src_vocab_size, hidden)
-        self.decoder_embeddings = nn.Embedding(tgt_vocab_size, hidden)
-        self.positional_emb = nn.Embedding(src_vocab_size, hidden)
+        self.encoder_embeddings = nn.Embedding(vocab_size, hidden)
+        self.decoder_embeddings = nn.Embedding(vocab_size, hidden)
+        self.positional_emb = nn.Embedding(vocab_size, hidden)
 
-        self.out_proj = nn.Linear(hidden, tgt_vocab_size)
+        self.out_proj = nn.Linear(hidden, vocab_size)
         self.dropout = nn.Dropout(dropout)
         # YOUR CODE ENDS HERE
 
