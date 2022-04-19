@@ -277,28 +277,17 @@ def preprocess_function(
     inputs = [ex[source_lang] for ex in examples["translation"]]
     targets = [ex[target_lang] for ex in examples["translation"]]
 
-    model_inputs = source_tokenizer(inputs, max_length=max_seq_length, truncation=True)
+    model_inputs = tokenizer(inputs, max_length=max_seq_length, truncation=True)
 
-    targets = target_tokenizer(targets, max_length=max_seq_length - 1, truncation=True)
+    targets = tokenizer(targets, max_length=max_seq_length - 1, truncation=True)
     target_ids = targets["input_ids"]
 
-    # Inline question 4.1:
-    # What does the loop below do? Why dos target_tokenizer has max_length=max_seq_length-1?
-    # YOUR ANSWER HERE (please limit your answer to 1-2 sentences):
-    # This loop appends the beginning of sequence to the front and end of sequence to the end
-    # of each target id
-    # END OF YOUR ANSWER
     decoder_input_ids = []
     labels = []
     for target in target_ids:
-        decoder_input_ids.append([target_tokenizer.bos_token_id] + target)
-        labels.append(target + [target_tokenizer.eos_token_id])
+        decoder_input_ids.append([tokenizer.bos_token_id] + target)
+        labels.append(target + [tokenizer.eos_token_id])
 
-    # Inline question 4.2:
-    # Why do we need to shift the target text by one token?
-    # YOUR ANSWER HERE (please limit your answer to one sentence):
-    # We need to shift the target text by one because we used whitespace as a delimeter
-    # END OF YOUR ANSWER
     model_inputs["decoder_input_ids"] = decoder_input_ids
     model_inputs["labels"] = labels
 
@@ -345,11 +334,6 @@ def evaluate_model(
             labels = batch["labels"].to(device)
             key_padding_mask = batch["encoder_padding_mask"].to(device)
 
-            # Inline question 4.3:
-            # What is the diffrence between model.forward() and model.generate()?
-            # Do we need to have decoder_input_ids in the .forward() call? In .generate() call?
-            # YOUR ANSWER HERE (please limit your answer to 1-2 sentences):
-            # Model forward generates the probabilities, while generate outputs the translation.
             generated_tokens = model.generate(
                 input_ids,
                 bos_token_id=target_tokenizer.bos_token_id,
@@ -435,12 +419,6 @@ def main():
     # First we tokenize all the texts.
     column_names = raw_datasets["train"].column_names
 
-    # (It is not nesessary to understand partial for this assignment)
-    # Partial is a slightly magic function that wraps other funcitons.
-    # https://stackoverflow.com/questions/15331726/how-does-functools-partial-do-what-it-does
-    # Because .map expects the pre-processing function only to have one argument,
-    # we need to wrap preprocess_function() in a partial and provide the rest of the arguments.
-    # It is better to do this instead of defining a function right here (as we did in the previous homework)
     #preprocess_function_wrapped = partial(
     #    preprocess_function,
     #    source_lang=args.source_lang,
@@ -476,15 +454,6 @@ def main():
     #    target_pad_token_id=target_tokenizer.pad_token_id,
     #)
 
-    # Task 4.3: Create a PyTorch DataLoader for the training set
-    # 1. Provide your train_dataset to it.
-    # 2. Indicate that you want this dataloader to shuffle the data.
-    # 3. Speficy collate_fn function to be collation_function_for_seq2seq_wrapped
-    # 4. Provide the batch size you want to use from the args
-    # 5. Do the same for the evaluation set, but do not shuffle it.
-    # Our implementation is two lines, but if you write it in 10-12 lines it would be more readable.
-    # (readability matters)
-    # YOUR CODE STARTS HERE
     from transformers.data.data_collator import DataCollatorWithPadding
 
     collator = transformers.data.data_collator.DataCollatorWithPadding(tokenizer)

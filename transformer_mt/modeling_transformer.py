@@ -168,41 +168,21 @@ class TransfomerEncoderDecoderModel(nn.Module):
         self.dropout_rate = dropout
         self.max_seq_len = max_seq_len
 
-        # Task 2.3 (1 point)
-        # 1. Create encoder, decoder and positional embedding layer
-        # Use nn.Embedding for that and make sure to include source and target vocabulary size
-        # 2. Create a linear layer out_proj that will project contextualized representations
-        # of size hidden to your target vocabulary size.
-        # 3. Create a dropout layer
-        # YOUR CODE STARTS HERE (our implementation is about 5 lines)
-
         self.encoder_embeddings = nn.Embedding(vocab_size, hidden)
         self.decoder_embeddings = nn.Embedding(vocab_size, hidden)
         self.positional_emb = nn.Embedding(vocab_size, hidden)
 
         self.out_proj = nn.Linear(hidden, vocab_size)
         self.dropout = nn.Dropout(dropout)
-        # YOUR CODE ENDS HERE
 
-        # Task 2.4 (1 point)
-        # 1. Create a list of encoder Layers
-        # 2. Create a list of decoder Layers
-        #
-        # Note that you need to wrap it with nn.ModuleList,
-        # so that the parameters of the layers would be counted as the paramertes of the model
-        # https://pytorch.org/docs/stable/generated/torch.nn.ModuleList.html
-        # Read more about ModuleList here:
-        # https://github.com/FrancescoSaverioZuppichini/Pytorch-how-and-when-to-use-Module-Sequential-ModuleList-and-ModuleDict
-        # You can use for-loop of python list comprehension to create the list of layers
-        #
-        # YOUR CODE STARTS HERE (our implementation is 3-6 lines)
+
         self.encoder_layers = nn.ModuleList(
             [TransformerEncoderLayer(hidden, num_heads, fcn_hidden, dropout, True) for i in range(num_layers)]
         )
         self.decoder_layers = nn.ModuleList(
             [TransformerDecoderLayer(hidden, num_heads, fcn_hidden, dropout) for i in range(num_layers)]
         )
-        # YOUR CODE ENDS HERE
+        
 
     def _add_positions(self, sequence_tensor):
         """Adds positional embeddings to the input tensor.
