@@ -291,9 +291,40 @@ def evaluate_model(
     generation_type,
     beam_size,
 ):
-    #https://huggingface.co/metrics/bleurt
-    metric = load_metric("bleurt")
+    n_generated_tokens = 0
+    model.eval()
+    for batch in tqdm(dataloader, desc="Evaluation"):
+        with torch.inference_mode():
+            input_ids = batch["input_ids"].to(device)
+            labels = batch["labels"].to(device)
+            key_padding_mask = batch["encoder_padding_mask"].to(device)
+            
+            generated_tokens = model.generate(
+                input_ids,
+                bos_token_id=target_tokenizer.bos_token_id,
+                eos_token_id=target_tokenizer.eos_token_id,
+                pad_token_id=target_tokenizer.pad_token_id,
+                key_padding_mask=key_padding_mask,
+                max_length=max_seq_length,
+                kind=generation_type,
+                beam_size=beam_size,
+            )
+            decoded_preds = target_tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            decoded_labels = target_tokenizer.batch_decode(labels, skip_special_tokens=True)
 
+            for pred in decoded_preds:
+                n_generated_tokens += len(target_tokenizer(pred)["input_ids"])
+
+            decoded_preds, decoded_labels = utils.postprocess_text(decoded_preds, decoded_labels)
+
+            bleu.add_batch(predictions=decoded_preds, references=decoded_labels)
+
+    model.train()
+    eval_metric = bleu.compute()
+    evaluation_results = {
+        "bleu": eval_metric["score"],
+        "generation_length": n_generated_tokens / len(dataloader.dataset),
+    }
     return evaluation_results, input_ids, decoded_preds, decoded_labels
 
 
@@ -334,13 +365,8 @@ def main():
     # Move model to the device we use for training
     # YOUR CODE STARTS HERE
     model = TransfomerEncoderDecoderModel(
-        num_layers=args.num_layers,
-        hidden=args.hidden_size, 
         num_heads=args.num_heads,
-        fcn_hidden=args.fcn_hidden,
-        max_seq_len=args.max_seq_length,
-        src_vocab_size=tokenizer.vocab_size,
-        dropout=args.dropout_rate,
+        pre_trained_tokenizer = tokenizer,
     )
     model.to(args.device)
     # YOUR CODE ENDS HERE

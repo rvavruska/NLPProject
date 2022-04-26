@@ -72,16 +72,6 @@ class TransformerDecoderLayer(nn.Module):
     def __init__(self, hidden, num_heads, fcn_hidden, dropout=0.0):
         super().__init__()
 
-        # Task 2.1 (1 point)
-        # Create layers needed for Transformer Decoder Layer
-        # 1. Create self.self_attention layer using MultiHeadAttention
-        # 2. Create self.cross_attention layer using MultiHeadAttention
-        # 2a. Which one of self_attention or cross_attention should have causal=True? Set it there.
-        # 3. Create self.att_layer_norm, self.cross_att_layer_norm, and self.fcn_layer_norm layers using LayerNorm
-        # 4. Create self.fcn network using nn.Sequential, nn.ReLU and nn.Linear
-        # 5. Create self.dropout layer using nn.Dropout
-        # YOUR CODE STARTS HERE  (our implementation is about 5-8 lines) 
-
         self.self_attention = MultiHeadAttention(hidden, hidden, num_heads, causal = True)
         self.cross_attention = MultiHeadAttention(hidden, hidden, num_heads)
 
@@ -141,46 +131,29 @@ class TransfomerEncoderDecoderModel(nn.Module):
         self,
         *,
         num_layers,
-        hidden,
         num_heads,
-        fcn_hidden,
-        max_seq_len,
-        vocab_size,
-        dropout=0.1,
+        pre_trained_tokenizer,
     ):
         """A minimal implementation of Transformer Encoder Decoder Model
-        
-        Args:
-            num_layer: number of layers for encoder and decoder (in total, model will have 2 * num_layers layers)
-            hidden : embedding size and hidden size of attentions
-            fcn_hidden: hidden size of fully-connected networks inside transformer layers
-            vocab_size: size of vocabulary
-            max_seq_len: maximum length of input, target sequence whichever is higher number
-            src_vocab_size : source voacb size
-            tgt_vocab_size : target voab size
+    
         """
         super().__init__()
-        self.src_vocab_size = vocab_size
+        self.src_vocab_size = pre_trained_tokenizer.config.vocab_size
         self.num_layers = num_layers
-        self.hidden = hidden
+        self.hidden = pre_trained_tokenizer.config.hidden_size
         self.num_heads = num_heads
-        self.fcn_hidden = fcn_hidden
-        self.dropout_rate = dropout
-        self.max_seq_len = max_seq_len
+        self.dropout_rate = pre_trained_tokenizer.config.hidden_dropout_prob
+        self.fcn_hidden = pre_trained_tokenizer.config.encoder_ffn_dim
 
-        self.encoder_embeddings = nn.Embedding(vocab_size, hidden)
-        self.decoder_embeddings = nn.Embedding(vocab_size, hidden)
-        self.positional_emb = nn.Embedding(vocab_size, hidden)
-
-        self.out_proj = nn.Linear(hidden, vocab_size)
-        self.dropout = nn.Dropout(dropout)
+        self.pre_trained_encoder = pre_trained_tokenizer
+        self.output_layer = nn.Linear(pre_trained_tokenizer.config.hidden_size, num_heads)
 
 
         self.encoder_layers = nn.ModuleList(
-            [TransformerEncoderLayer(hidden, num_heads, fcn_hidden, dropout, True) for i in range(num_layers)]
+            [TransformerEncoderLayer(self.hidden, num_heads, self.fcn_hidden, self.dropout_rate, True) for i in range(num_layers)]
         )
         self.decoder_layers = nn.ModuleList(
-            [TransformerDecoderLayer(hidden, num_heads, fcn_hidden, dropout) for i in range(num_layers)]
+            [TransformerDecoderLayer(self.hidden, num_heads, self.fcn_hidden, self.dropout_rate) for i in range(num_layers)]
         )
         
 
