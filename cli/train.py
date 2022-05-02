@@ -39,9 +39,10 @@ from tqdm.auto import tqdm
 
 import wandb
 import transformers
+from transformers.models.bart.modeling_bart import shift_tokens_right
+from transformers import BartForConditionalGeneration, BartTokenizer
 
 # Imports from our module
-from transformer_mt.modeling_transformer import TransfomerEncoderDecoderModel, BartTokenizer, BartForConditionalGeneration
 from transformer_mt import utils
 
 
@@ -263,29 +264,40 @@ def parse_args():
 
     args = parser.parse_args()
 
-    if f"{args.source_lang}_tokenizer" not in os.listdir(args.output_dir):
-        raise ValueError(f"The source tokenizer is not found in {args.output_dir}")
-    
-    if f"{args.target_lang}_tokenizer" not in os.listdir(args.output_dir):
-        raise ValueError(f"The target tokenizer is not found in {args.output_dir}")
-
     return args
 
 
 def preprocess_function(
-    examples
+    examples,
+    tokenizer,
+    model
 ):
     inputs = [ex for ex in examples["article"]]
     targets = [ex for ex in examples["highlights"]]
 
-    return inputs
+    input_encodings = tokenizer.batch_encode_plus(inputs, pad_to_max_length=True, max_length=1024, truncation=True)
+    target_encodings = tokenizer.batch_encode_plus(targets, pad_to_max_length=True, max_length=1024, truncation=True)
+    #print(input_encodings.shape)
+
+    labels = target_encodings['input_ids']
+    #decoder_input_ids = shift_tokens_right(labels, model.config.pad_token_id, decoder_start_token_id=model.config.decoder_start_token_id)
+    #labels[labels[:, :] == model.config.pad_token_id] = -100
+    
+    encodings = {
+        'input_ids': input_encodings['input_ids'],
+        'attention_mask': input_encodings['attention_mask'],
+        'decoder_input_ids': labels,
+        'labels': labels,
+    }
+
+    return encodings
 
 
 def evaluate_model(
     model,
     dataloader,
     *,
-    target_tokenizer,
+    tokenizer,
     device,
     max_seq_length,
     generation_type,
@@ -301,19 +313,19 @@ def evaluate_model(
             
             generated_tokens = model.generate(
                 input_ids,
-                bos_token_id=target_tokenizer.bos_token_id,
-                eos_token_id=target_tokenizer.eos_token_id,
-                pad_token_id=target_tokenizer.pad_token_id,
+                bos_token_id=tokenizer.bos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id,
                 key_padding_mask=key_padding_mask,
                 max_length=max_seq_length,
                 kind=generation_type,
                 beam_size=beam_size,
             )
-            decoded_preds = target_tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            decoded_labels = target_tokenizer.batch_decode(labels, skip_special_tokens=True)
+            decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
 
             for pred in decoded_preds:
-                n_generated_tokens += len(target_tokenizer(pred)["input_ids"])
+                n_generated_tokens += len(tokenizer(pred)["input_ids"])
 
             decoded_preds, decoded_labels = utils.postprocess_text(decoded_preds, decoded_labels)
 
@@ -334,7 +346,7 @@ def main():
     logger.info(f"Starting script with arguments: {args}")
 
     # Initialize wandb as soon as possible to log all stdout to the cloud
-    wandb.init(project=args.wandb_project, config=args)
+    #wandb.init(project=args.wandb_project, config=args)
 
     ###############################################################################
     # Part 1: Load the data
@@ -360,16 +372,8 @@ def main():
 
     tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
 
-    # Task 4.2: Create TransformerEncoderDecoder object
-    # Provide all of the TransformerLM initialization arguments from args.
-    # Move model to the device we use for training
-    # YOUR CODE STARTS HERE
-    model = TransfomerEncoderDecoderModel(
-        num_heads=args.num_heads,
-        pre_trained_tokenizer = tokenizer,
-    )
+    model = BartForConditionalGeneration.from_pretrained('facebook/bart-large')
     model.to(args.device)
-    # YOUR CODE ENDS HERE
 
     ###############################################################################
     # Part 3: Pre-process the data
@@ -379,24 +383,22 @@ def main():
     # First we tokenize all the texts.
     column_names = raw_datasets["train"].column_names
 
-    #preprocess_function_wrapped = partial(
-    #    preprocess_function,
-    #    source_lang=args.source_lang,
-    #    max_seq_length=args.max_seq_length,
-    #    source_tokenizer=tokenizer,
-    #)
+    preprocess_function_wrapped = partial(
+        preprocess_function,
+        tokenizer=tokenizer,
+        model=model,
+    )
 
     processed_datasets = raw_datasets.map(
-        preprocess_function,
+        preprocess_function_wrapped,
         batched=True,
-        num_proc=args.preprocessing_num_workers,
         remove_columns=column_names,
         load_from_cache_file=not args.overwrite_cache,
         desc="Running tokenizer on dataset",
     )
 
     train_dataset = processed_datasets["train"]
-    eval_dataset = processed_datasets["validation"] if "validaion" in processed_datasets else processed_datasets["test"]
+    eval_dataset = processed_datasets["validation"] if "validation" in processed_datasets else processed_datasets["test"]
 
     # Log a few random samples from the training set:
     for index in random.sample(range(len(train_dataset)), 2):
@@ -419,7 +421,7 @@ def main():
     collator = transformers.data.data_collator.DataCollatorWithPadding(tokenizer)
 
     train_dataloader = DataLoader(
-        train_dataset, shuffle=True, collate_fn=collator, batch_size=args.batch_size, num_workers=args.preprocessing_num_workers,
+        train_dataset, shuffle=True, collate_fn=collator, batch_size=args.batch_size
     )
     eval_dataloader = DataLoader(
         eval_dataset, collate_fn=collator, batch_size=args.batch_size
@@ -478,13 +480,13 @@ def main():
         for batch in train_dataloader:
             input_ids = batch["input_ids"].to(args.device)
             decoder_input_ids = batch["decoder_input_ids"].to(args.device)
-            key_padding_mask = batch["encoder_padding_mask"].to(args.device)
+            attention_mask = batch["attention_mask"].to(args.device)
             labels = batch["labels"].to(args.device)
 
             logits = model(
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
-                key_padding_mask=key_padding_mask,
+                attention_mask=attention_mask,
             )
 
             loss = F.cross_entropy(
