@@ -479,6 +479,7 @@ def main():
         # iterate over batches
         for batch in train_dataloader:
             input_ids = batch["input_ids"].to(args.device)
+            print(input_ids.shape)
             decoder_input_ids = batch["decoder_input_ids"].to(args.device)
             attention_mask = batch["attention_mask"].to(args.device)
             labels = batch["labels"].to(args.device)
