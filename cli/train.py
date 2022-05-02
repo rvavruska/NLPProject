@@ -481,6 +481,7 @@ def main():
             input_ids = batch["input_ids"].to(args.device)
             print(input_ids.shape)
             decoder_input_ids = batch["decoder_input_ids"].to(args.device)
+            print(decoder_input_ids.shape)
             attention_mask = batch["attention_mask"].to(args.device)
             print(attention_mask.shape)
             labels = batch["labels"].to(args.device)
