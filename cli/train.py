@@ -463,7 +463,7 @@ def main():
     logger.info("Look at the data that we input into the model, check that it looks like what we expect.")
     for index in random.sample(range(len(batch)), 2):
         logger.info(f"Decoded input_ids: {tokenizer.decode(batch['input_ids'][0])}")
-        logger.info(f"Decoded labels: {tokenizer.decode(batch['labels'][0])}")
+        logger.info(f"Decoded labels: {tokenizer.decode(batch['decoder_input_ids'][0])}")
         logger.info("\n")
 
     ###############################################################################
