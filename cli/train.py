@@ -346,7 +346,7 @@ def main():
     logger.info(f"Starting script with arguments: {args}")
 
     # Initialize wandb as soon as possible to log all stdout to the cloud
-    #wandb.init(project=args.wandb_project, config=args)
+    wandb.init(project=args.wandb_project, config=args)
 
     ###############################################################################
     # Part 1: Load the data
