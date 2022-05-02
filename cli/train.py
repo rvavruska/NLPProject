@@ -281,8 +281,8 @@ def preprocess_function(
 
     labels = target_encodings['input_ids']
     decoder_input_ids = labels.copy()
-    labels[labels[:, :] == model.config.pad_token_id] = -100
-    
+    #labels[labels[:, :] == model.config.pad_token_id] = -100
+    labels = [[-100 if token == tokenizer.pad_token_id else token for token in l] for l in labels]
     encodings = {
         'input_ids': input_encodings['input_ids'],
         'attention_mask': input_encodings['attention_mask'],
