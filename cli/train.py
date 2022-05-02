@@ -308,6 +308,7 @@ def evaluate_model(
         with torch.inference_mode():
             input_ids = batch["input_ids"].to(device)
             labels = batch["labels"].to(device)
+            labels[labels == -100] = tokenizer.pad_token_id
             
             generated_tokens = model.generate(
                 input_ids,
