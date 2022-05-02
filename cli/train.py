@@ -296,7 +296,6 @@ def preprocess_function(
 def evaluate_model(
     model,
     dataloader,
-    *,
     tokenizer,
     device,
     max_seq_length,
