@@ -488,7 +488,7 @@ def main():
             labels = batch["labels"].to(args.device)
             print(batch.shape)
 
-            loss, logits = model(
+            outputs = model(
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
                 attention_mask=attention_mask,
