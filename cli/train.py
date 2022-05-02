@@ -280,13 +280,13 @@ def preprocess_function(
     #print(input_encodings.shape)
 
     labels = target_encodings['input_ids']
-    #decoder_input_ids = shift_tokens_right(labels, model.config.pad_token_id, decoder_start_token_id=model.config.decoder_start_token_id)
-    #labels[labels[:, :] == model.config.pad_token_id] = -100
+    decoder_input_ids = labels.copy()
+    labels[labels[:, :] == model.config.pad_token_id] = -100
     
     encodings = {
         'input_ids': input_encodings['input_ids'],
         'attention_mask': input_encodings['attention_mask'],
-        'decoder_input_ids': labels,
+        'decoder_input_ids': decoder_input_ids,
         'labels': labels,
     }
 
@@ -487,11 +487,13 @@ def main():
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
                 attention_mask=attention_mask,
+                labels=labels,
             )
 
             print(outputs)
 
-            loss = outputs.loss.backward()
+            loss = outputs.loss
+            loss = loss.backward()
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
