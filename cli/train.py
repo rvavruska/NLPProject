@@ -478,6 +478,7 @@ def main():
 
         # iterate over batches
         for batch in train_dataloader:
+            print(batch)
             input_ids = batch["input_ids"].to(args.device)
             print(input_ids.shape)
             decoder_input_ids = batch["decoder_input_ids"].to(args.device)
@@ -485,6 +486,7 @@ def main():
             attention_mask = batch["attention_mask"].to(args.device)
             print(attention_mask.shape)
             labels = batch["labels"].to(args.device)
+            print(batch.shape)
 
             loss, logits = model(
                 input_ids,
