@@ -471,6 +471,7 @@ def main():
     # Part 6: Training loop
     ###############################################################################
     global_step = 0
+    gradient_accumulation_steps = 8
 
     # iterate over epochs
     for epoch in range(args.num_train_epochs):
@@ -483,19 +484,13 @@ def main():
             attention_mask = batch["attention_mask"].to(args.device)
             labels = batch["labels"].to(args.device)
 
-            logits = model(
+            outputs = model(
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
                 attention_mask=attention_mask,
             )
 
-            loss = F.cross_entropy(
-                logits.view(-1, logits.shape[-1]),
-                labels.view(-1),
-                ignore_index=tokenizer.pad_token_id,
-            )
-
-            loss.backward()
+            loss = outputs.loss.backward()
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
