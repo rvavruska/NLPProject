@@ -330,7 +330,7 @@ def main():
     logger.info(f"Starting script with arguments: {args}")
 
     # Initialize wandb as soon as possible to log all stdout to the cloud
-    wandb.init(project=args.wandb_project, config=args)
+    wandb.init(project="cnn_summarization", config=args)
 
     ###############################################################################
     # Part 1: Load the data
@@ -455,7 +455,7 @@ def main():
     # Part 6: Training loop
     ###############################################################################
     global_step = 0
-    gradient_accumulation_steps = 8
+    gradient_accumulation_steps = 32
 
     # iterate over epochs
     for epoch in range(args.num_train_epochs):
@@ -476,10 +476,12 @@ def main():
             )
 
             loss = outputs.loss
+            loss = loss / gradient_accumulation_steps
             loss = loss.backward()
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+            if (global_step + 1) % gradient_accumulation_steps == 0:
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
 
             progress_bar.update(1)
             global_step += 1
