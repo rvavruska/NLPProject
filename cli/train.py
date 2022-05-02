@@ -296,7 +296,6 @@ def preprocess_function(
 def evaluate_model(
     model,
     dataloader,
-    *,
     tokenizer,
     device,
     max_seq_length,
@@ -512,7 +511,7 @@ def main():
                 # how well the model is doing on the training set.
                 # Please pay attention to it during training.
                 # If the metric is significantly below 80%, there is a chance of a bug somewhere.
-                predictions = logits.argmax(-1)
+                predictions = outputs.logits.argmax(-1)
                 label_nonpad_mask = labels != tokenizer.pad_token_id
                 num_words_in_batch = label_nonpad_mask.sum().item()
 
@@ -527,9 +526,9 @@ def main():
                 eval_results, last_input_ids, last_decoded_preds, last_decoded_labels = evaluate_model(
                     model=model,
                     dataloader=eval_dataloader,
-                    target_tokenizer=tokenizer,
+                    tokenizer=tokenizer,
                     device=args.device,
-                    max_seq_length=args.max_seq_length,
+                    max_seq_length=1024,
                     generation_type=args.generation_type,
                     beam_size=args.beam_size,
                 )
