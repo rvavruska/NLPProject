@@ -488,6 +488,7 @@ def main():
                 decoder_input_ids=decoder_input_ids,
                 attention_mask=attention_mask,
             )
+            print(outputs)
 
             loss = outputs.loss.backward()
             optimizer.step()
@@ -502,7 +503,7 @@ def main():
                     "train_loss": loss,
                     "learning_rate": optimizer.param_groups[0]["lr"],
                     "epoch": epoch,
-                },
+                }
                 step=global_step,
             )
 
