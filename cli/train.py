@@ -308,7 +308,6 @@ def evaluate_model(
         with torch.inference_mode():
             input_ids = batch["input_ids"].to(device)
             labels = batch["labels"].to(device)
-            key_padding_mask = batch["encoder_padding_mask"].to(device)
             
             generated_tokens = model.generate(
                 input_ids,
