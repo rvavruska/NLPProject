@@ -489,7 +489,7 @@ def main():
                 attention_mask=attention_mask,
             )
 
-            loss = loss.backward()
+            loss = outputs.loss.backward()
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -511,7 +511,7 @@ def main():
                 # how well the model is doing on the training set.
                 # Please pay attention to it during training.
                 # If the metric is significantly below 80%, there is a chance of a bug somewhere.
-                predictions = logits.argmax(-1)
+                predictions = outputs.logits.argmax(-1)
                 label_nonpad_mask = labels != tokenizer.pad_token_id
                 num_words_in_batch = label_nonpad_mask.sum().item()
 
