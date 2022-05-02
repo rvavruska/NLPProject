@@ -490,8 +490,6 @@ def main():
                 labels=labels,
             )
 
-            print(outputs)
-
             loss = outputs.loss
             loss = loss.backward()
             optimizer.step()
