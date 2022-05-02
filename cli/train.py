@@ -483,13 +483,13 @@ def main():
             attention_mask = batch["attention_mask"].to(args.device)
             labels = batch["labels"].to(args.device)
 
-            outputs = model(
+            loss, logits = model(
                 input_ids,
                 decoder_input_ids=decoder_input_ids,
                 attention_mask=attention_mask,
             )
 
-            loss = outputs.loss.backward()
+            loss = loss.backward()
             optimizer.step()
             lr_scheduler.step()
             optimizer.zero_grad()
@@ -511,7 +511,7 @@ def main():
                 # how well the model is doing on the training set.
                 # Please pay attention to it during training.
                 # If the metric is significantly below 80%, there is a chance of a bug somewhere.
-                predictions = outputs.logits.argmax(-1)
+                predictions = logits.argmax(-1)
                 label_nonpad_mask = labels != tokenizer.pad_token_id
                 num_words_in_batch = label_nonpad_mask.sum().item()
 
