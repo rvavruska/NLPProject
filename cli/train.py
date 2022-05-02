@@ -275,8 +275,8 @@ def preprocess_function(
     inputs = examples["article"]
     targets = examples["highlights"]
 
-    input_encodings = tokenizer.batch_encode_plus(inputs, pad_to_max_length=True, max_length=1024, truncation=True)
-    target_encodings = tokenizer.batch_encode_plus(targets, pad_to_max_length=True, max_length=1024, truncation=True)
+    input_encodings = tokenizer.batch_encode_plus(examples["article"], pad_to_max_length=True, max_length=1024, truncation=True)
+    target_encodings = tokenizer.batch_encode_plus(examples["highlights"], pad_to_max_length=True, max_length=1024, truncation=True)
     #print(input_encodings.shape)
 
     labels = target_encodings['input_ids']
