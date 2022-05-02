@@ -461,7 +461,7 @@ def main():
     # and we do not input garbage to our model.
     batch = next(iter(train_dataloader))
     logger.info("Look at the data that we input into the model, check that it looks like what we expect.")
-    for index in random.sample(range(len(batch)), 2):
+    for index in random.sample(range(len(batch)), 1):
         logger.info(f"Decoded input_ids: {tokenizer.decode(batch['input_ids'][index])}")
         logger.info(f"Decoded labels: {tokenizer.decode(batch['labels'][index])}")
         logger.info("\n")
