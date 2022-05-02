@@ -315,9 +315,6 @@ def evaluate_model(
                 bos_token_id=tokenizer.bos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
                 pad_token_id=tokenizer.pad_token_id,
-                key_padding_mask=key_padding_mask,
-                max_length=max_seq_length,
-                kind=generation_type,
                 beam_size=beam_size,
             )
             decoded_preds = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
