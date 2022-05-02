@@ -92,18 +92,6 @@ def parse_args():
               "Both of these should be directories containing tokenizer.json files."
         ),
     )
-    parser.add_argument(
-        "--source_lang",
-        type=str,
-        required=True,
-        help="Source language id for translation.",
-    )
-    parser.add_argument(
-        "--target_lang",
-        type=str,
-        required=True,
-        help="Target language id for translation.",
-    )
     # Data arguments
     parser.add_argument(
         "--dataset_name",
