@@ -482,6 +482,7 @@ def main():
             print(input_ids.shape)
             decoder_input_ids = batch["decoder_input_ids"].to(args.device)
             attention_mask = batch["attention_mask"].to(args.device)
+            print(attention_mask.shape)
             labels = batch["labels"].to(args.device)
 
             loss, logits = model(
