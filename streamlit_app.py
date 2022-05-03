@@ -11,15 +11,12 @@ import numpy as np
 
 from transformers import BartForConditionalGeneration, BartTokenizer
 
-tokenizer = None
-model = None
+
 
 def Run_Summary(text):
-    if tokenizer == None:
-        tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
+    tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
 
-    if model == None:
-        model = BartForConditionalGeneration.from_pretrained("summ_output")
+    model = BartForConditionalGeneration.from_pretrained("summ_output")
     
     model.eval()
     input_ids = tokenizer.encode(text, return_tensors="pt")
@@ -30,9 +27,11 @@ def Run_Summary(text):
     eos_token_id=tokenizer.eos_token_id,
     pad_token_id=tokenizer.pad_token_id,
     )
-
+    st.write("Summary: ", tokenizer.decode(output_ids[0]))
     return tokenizer.decode(output_ids[0])
+
 
 st.title('Article Summurization')
 text = st.text_area("Article to summarize")
-st.write("Summary: ", Run_Summary(text))
+if st.button("Summarize", key=None, help=None, on_click=Run_Summary(text)):
+    Run_Summary(text)
