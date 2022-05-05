@@ -9,30 +9,27 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+import transformers
 from transformers import BartForConditionalGeneration, BartTokenizer
 
-tokenizer = None
-model = None
+tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
+model = BartForConditionalGeneration.from_pretrained("summ_output")
 
-def Run_Summary(text):
-    if tokenizer == None:
-        tokenizer = BartTokenizer.from_pretrained("facebook/bart-large")
+st.title('Article Summurization')
+summary = ""
 
-    if model == None:
-        model = BartForConditionalGeneration.from_pretrained("summ_output")
-    
+def Run_Summary(text):    
     model.eval()
     input_ids = tokenizer.encode(text, return_tensors="pt")
     output_ids = model.generate(
     input_ids,
-    max_length=1024,
+    max_length=128,
     bos_token_id=tokenizer.bos_token_id,
     eos_token_id=tokenizer.eos_token_id,
     pad_token_id=tokenizer.pad_token_id,
     )
+    st.write("Summary: ", tokenizer.decode(output_ids[0]))
 
-    return tokenizer.decode(output_ids[0])
-
-st.title('Article Summurization')
-text = st.text_area("Article to summarize")
-st.write("Summary: ", Run_Summary(text))
+text = st.text_area("Article to summarize", "")
+if st.button("Summarize"):
+    Run_Summary(text)

@@ -436,13 +436,13 @@ def main():
         num_training_steps=args.max_train_steps,
     )
 
-    gradient_accumulation_steps = 32
+    #gradient_accumulation_steps = 32
 
     logger.info("***** Running training *****")
     logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {args.num_train_epochs}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    progress_bar = tqdm(range(args.max_train_steps*gradient_accumulation_steps))
+    progress_bar = tqdm(range(args.max_train_steps))
 
     # Log a pre-processed training example to make sure the pre-processing does not have bugs in it
     # and we do not input garbage to our model.
@@ -478,26 +478,25 @@ def main():
             )
 
             loss = outputs.loss
-            loss = loss / gradient_accumulation_steps
+            loss = loss
             loss = loss.backward()
-            if (global_step + 1) % gradient_accumulation_steps == 0:
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
 
-                wandb.log(
-                {
-                    "train_loss": loss,
-                    "learning_rate": optimizer.param_groups[0]["lr"],
-                    "epoch": epoch,
-                },
-                step=global_step,
-                )
+            wandb.log(
+            {
+                "train_loss": loss,
+                "learning_rate": optimizer.param_groups[0]["lr"],
+                "epoch": epoch,
+            },
+            step=global_step,
+            )
 
             progress_bar.update(1)
             global_step += 1
 
-            if global_step % args.logging_steps * gradient_accumulation_steps == 0:
+            if global_step % args.logging_steps == 0:
                 # An extra training metric that might be useful for understanding
                 # how well the model is doing on the training set.
                 # Please pay attention to it during training.
@@ -513,7 +512,7 @@ def main():
                     step=global_step,
                 )
 
-            if global_step % args.eval_every_steps * gradient_accumulation_steps == 0 or global_step == args.max_train_steps:
+            if global_step % args.eval_every_steps or global_step == args.max_train_steps:
                 eval_results, last_input_ids, last_decoded_preds, last_decoded_labels = evaluate_model(
                     model=model,
                     dataloader=eval_dataloader,
